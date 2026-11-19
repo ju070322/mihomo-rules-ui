@@ -298,7 +298,14 @@ server.on('clientError', (err, socket) => {
 });
 
 server.listen(PORT, HOST, () => {
-  log('mihomo 规则管理网页已启动: http://' + HOST + ':' + PORT);
+  // 自己写 PID：用 setsid 启动时 shell 拿到的 $! 可能不是真实进程
+  try {
+    fs.mkdirSync(path.dirname(store.APP_DIR + '/data/x'), { recursive: true });
+    fs.writeFileSync(path.join(store.APP_DIR, 'data', 'server.pid'), String(process.pid));
+  } catch (err) {
+    log('警告: 写 PID 文件失败 ' + err.message);
+  }
+  log('mihomo 规则管理网页已启动: http://' + HOST + ':' + PORT + ' (PID ' + process.pid + ')');
   log('主配置:', mihomo.CONFIG_PATH);
   log('自定义规则:', store.CUSTOM_FILE);
   const st = store.dirStatus();
