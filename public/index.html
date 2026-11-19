@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#14161a">
+<title>mihomo 规则管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231c1f26'/%3E%3Cpath d='M16 6l8 3v7c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V9z' fill='none' stroke='%233b82f6' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ==================== 顶部标题栏 ==================== -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true">🛡</span>
+      <div class="brand-text">
+        <h1>mihomo 规则管理</h1>
+        <p class="brand-sub" id="brand-sub">正在加载运行信息…</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="badge-pending" id="pending-badge" hidden>有未应用的改动</span>
+      <button type="button" class="btn btn-ghost" id="btn-backups" title="查看备份并回滚">💾 备份</button>
+      <button type="button" class="btn btn-ghost" id="btn-refresh" title="重新读取当前状态">↻ 刷新</button>
+      <button type="button" class="btn btn-primary" id="btn-apply" disabled title="把自定义规则写入主配置并重载 mihomo">⚡ 应用并重载</button>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ==================== 视图切换 ==================== -->
+  <nav class="view-tabs" role="tablist" aria-label="规则视图切换">
+    <button type="button" class="view-tab is-active" id="tab-custom" role="tab" aria-selected="true" aria-controls="view-custom">
+      自定义规则 <span class="tab-count" id="tab-custom-count">(—)</span>
+    </button>
+    <button type="button" class="view-tab" id="tab-main" role="tab" aria-selected="false" aria-controls="view-main">
+      主配置规则 <span class="tab-count" id="tab-main-count">(—)</span>
+    </button>
+  </nav>
+
+  <!-- 数据目录不可用（例如 RULES_DATA_DIR 尚未创建）时的致命提示 -->
+  <div class="banner banner-error" id="data-error" hidden>
+    <span aria-hidden="true">⛔</span>
+    <span id="data-error-text"></span>
+  </div>
+
+  <!-- ==================== 视图一：自定义规则 ==================== -->
+  <div class="view" id="view-custom" role="tabpanel" aria-labelledby="tab-custom">
+
+    <!-- 主配置未安装 rule-providers 时的提示 -->
+    <div class="banner banner-warn" id="installed-warning" hidden>
+      <span aria-hidden="true">⚠</span>
+      <span>主配置中还没有检测到 rule-providers 区块，应用规则前请先确认配置结构，避免重载失败。</span>
+    </div>
+
+    <!-- 运行信息 -->
+    <section class="meta-strip panel" id="meta-strip" aria-label="运行信息"></section>
+
+    <!-- 工具条 -->
+    <section class="toolbar" aria-label="规则筛选与操作">
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.5 10.5 14 14"></path></svg></span>
+        <input type="search" id="search-input" placeholder="搜索值、备注或目标…" autocomplete="off" spellcheck="false" aria-label="搜索规则">
+      </div>
+      <select id="filter-target" class="filter-select" aria-label="按目标筛选">
+        <option value="">全部目标</option>
+      </select>
+      <select id="filter-type" class="filter-select" aria-label="按类型筛选">
+        <option value="">全部类型</option>
+      </select>
+      <button type="button" class="btn btn-primary" id="btn-add">＋ 新增规则</button>
+    </section>
+
+    <!-- 规则表格 / 空状态 -->
+    <section class="panel table-panel" aria-label="自定义规则列表">
+      <div class="table-scroll" id="table-scroll">
+        <table class="rules-table">
+          <thead>
+            <tr>
+              <th class="col-idx">#</th>
+              <th>类型</th>
+              <th>值</th>
+              <th>目标</th>
+              <th class="col-desc">备注</th>
+              <th class="col-state">状态</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="rules-body"></tbody>
+        </table>
+      </div>
+      <div class="state-box" id="table-state"></div>
+    </section>
+
+    <!-- 底部统计 -->
+    <footer class="panel stats" id="stats" aria-label="规则统计"></footer>
+  </div>
+
+  <!-- ==================== 视图二：主配置规则（高危） ==================== -->
+  <div class="view" id="view-main" role="tabpanel" aria-labelledby="tab-main" hidden>
+
+    <!-- 高危横幅 -->
+    <div class="banner banner-danger banner-risk" id="main-risk-banner">
+      <span class="banner-icon" aria-hidden="true">⚠</span>
+      <span class="banner-text" id="main-risk-text">这里直接修改 mihomo 主配置，每次保存会自动备份并重载。</span>
+      <span class="banner-actions">
+        <button type="button" class="btn btn-small btn-ghost" id="btn-goto-custom">改用自定义规则</button>
+      </span>
+    </div>
+
+    <!-- aligned=false 时的对齐提示 -->
+    <div class="banner banner-warn banner-align" id="main-align-banner" hidden>
+      <span class="banner-icon" aria-hidden="true">⚠</span>
+      <span class="banner-text" id="main-align-text"></span>
+      <span class="banner-actions">
+        <button type="button" class="btn btn-small btn-ghost" id="btn-main-align">对齐模板</button>
+      </span>
+    </div>
+
+    <!-- 工具条 -->
+    <section class="toolbar" aria-label="主配置规则筛选与操作">
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.5 10.5 14 14"></path></svg></span>
+        <input type="search" id="main-search-input" placeholder="搜索值、目标或类型…" autocomplete="off" spellcheck="false" aria-label="搜索主配置规则">
+      </div>
+      <select id="main-filter-target" class="filter-select" aria-label="按目标筛选主配置规则">
+        <option value="">全部目标</option>
+      </select>
+      <select id="main-filter-type" class="filter-select" aria-label="按类型筛选主配置规则">
+        <option value="">全部类型</option>
+      </select>
+      <button type="button" class="btn btn-ghost" id="btn-main-reload" title="重新读取主配置里的全部规则">↻ 重新加载</button>
+    </section>
+
+    <!-- 主配置规则表格 / 空状态 -->
+    <section class="panel table-panel" aria-label="主配置规则列表">
+      <div class="table-scroll" id="main-table-scroll">
+        <table class="rules-table main-rules-table">
+          <thead>
+            <tr>
+              <th class="col-idx">#</th>
+              <th>类型</th>
+              <th>值</th>
+              <th>目标</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="main-rules-body"></tbody>
+        </table>
+      </div>
+      <div class="state-box" id="main-table-state"></div>
+    </section>
+
+    <!-- 分页 -->
+    <div class="panel pagination" id="main-pagination" hidden>
+      <span class="pagination-info" id="main-count">共 0 条，筛选后 0 条</span>
+      <div class="pager">
+        <button type="button" class="btn btn-small btn-ghost" id="main-prev" disabled>上一页</button>
+        <span class="pager-page" id="main-page-indicator">第 1/1 页</span>
+        <button type="button" class="btn btn-small btn-ghost" id="main-next" disabled>下一页</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ==================== 自定义规则：新增 / 编辑弹窗 ==================== -->
+<div class="modal-backdrop" id="rule-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rule-modal-title">
+    <div class="modal-head">
+      <h2 id="rule-modal-title">新增规则</h2>
+      <button type="button" class="icon-btn" id="rule-modal-close" title="关闭" aria-label="关闭">✕</button>
+    </div>
+    <form id="rule-form" novalidate autocomplete="off">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label" for="f-type">类型</label>
+          <select id="f-type" name="type" required></select>
+          <p class="hint" id="type-hint"></p>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="f-value">值</label>
+          <input type="text" id="f-value" name="value" class="mono" required spellcheck="false" autocomplete="off">
+          <p class="hint" id="value-hint"></p>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="f-target">目标策略</label>
+          <select id="f-target" name="target" required></select>
+          <p class="hint" id="target-hint"></p>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="f-desc">备注</label>
+          <input type="text" id="f-desc" name="desc" maxlength="120" placeholder="可选，给自己看的说明" autocomplete="off">
+        </div>
+        <div class="form-row form-row-inline">
+          <label class="form-label" for="f-enabled">启用</label>
+          <label class="switch">
+            <input type="checkbox" id="f-enabled" checked>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="form-row form-row-inline" id="row-no-resolve" hidden>
+          <label class="form-label" for="f-no-resolve">no-resolve</label>
+          <label class="switch">
+            <input type="checkbox" id="f-no-resolve">
+            <span class="switch-track"></span>
+          </label>
+          <p class="hint">IP / GEOIP 类规则启用后不做 DNS 解析（规则末尾附加 no-resolve）。</p>
+        </div>
+      </div>
+      <p class="form-error" id="form-error" hidden></p>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" id="rule-cancel">取消</button>
+        <button type="submit" class="btn btn-primary" id="rule-submit">创建规则</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== 主配置规则：编辑弹窗（高危，立即生效） ==================== -->
+<div class="modal-backdrop" id="main-rule-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="main-rule-modal-title">
+    <div class="modal-head">
+      <h2 id="main-rule-modal-title">编辑主配置规则</h2>
+      <button type="button" class="icon-btn" id="main-rule-modal-close" title="关闭" aria-label="关闭">✕</button>
+    </div>
+    <div class="banner banner-danger main-edit-warn">
+      <span aria-hidden="true">⚠</span>
+      <span>将直接写入主配置 <code class="mono">config.yaml</code>，保存后自动备份并重载 mihomo（约 2-3 秒），并同步修改 1x / 2x 两份列表。</span>
+    </div>
+    <form id="main-rule-form" novalidate autocomplete="off">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label" for="m-type">类型（只读）</label>
+          <input type="text" id="m-type" class="mono" readonly>
+          <p class="hint" id="m-type-hint"></p>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="m-value">值</label>
+          <input type="text" id="m-value" class="mono" spellcheck="false" autocomplete="off">
+          <p class="hint" id="m-value-hint"></p>
+        </div>
+        <div class="form-row">
+          <label class="form-label" for="m-target">目标策略</label>
+          <select id="m-target" required></select>
+          <p class="hint" id="m-target-hint"></p>
+        </div>
+      </div>
+      <p class="form-error" id="m-form-error" hidden></p>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" id="main-rule-cancel">取消</button>
+        <button type="submit" class="btn btn-danger" id="main-rule-submit">保存并重载</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== 二次确认弹窗 ==================== -->
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="modal-head">
+      <h2 id="confirm-title">确认操作</h2>
+    </div>
+    <p class="confirm-message" id="confirm-message"></p>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="confirm-cancel">取消</button>
+      <button type="button" class="btn btn-danger" id="confirm-ok">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 备份弹窗 ==================== -->
+<div class="modal-backdrop" id="backups-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="backups-title">
+    <div class="modal-head">
+      <h2 id="backups-title">配置备份</h2>
+      <button type="button" class="icon-btn" id="backups-close" title="关闭" aria-label="关闭">✕</button>
+    </div>
+    <p class="modal-desc">回滚会用备份文件覆盖当前配置；应用规则时通常会自动生成新备份。</p>
+    <div class="backups-list" id="backups-list"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="backups-done">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Toast 容器 ==================== -->
+<div class="toast-root" id="toast-root" aria-live="polite"></div>
+
+<script src="./app.js" defer></script>
+</body>
+</html>

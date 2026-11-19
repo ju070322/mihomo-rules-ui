@@ -1,0 +1,28 @@
+{
+  "name": "mihomo-rules-ui",
+  "version": "1.0.0",
+  "description": "Web UI for mihomo (Clash.Meta) routing rules: manage custom rule-provider sets and edit/delete built-in rules in place, with backup, YAML validation, reload verification and automatic rollback.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tools/selftest-offline.js",
+    "test:regions": "node tools/selftest-regions.js",
+    "test:apply": "node tools/selftest-apply.js",
+    "test:ui": "node tools/selftest-ui.js",
+    "lint": "node -e \"const{execSync}=require('child_process');const fs=require('fs');const walk=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(d+'/'+e.name):[d+'/'+e.name]).filter(f=>f.endsWith('.js'));for(const f of walk('.'))execSync('node --check '+f,{stdio:'inherit'});console.log('syntax ok')\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mihomo",
+    "clash",
+    "clash-meta",
+    "rule-provider",
+    "routing",
+    "webui",
+    "proxy"
+  ],
+  "license": "MIT",
+  "private": false
+}

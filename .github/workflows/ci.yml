@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22, 24]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Syntax check every JS file
+        run: npm run lint
+
+      - name: Offline self-test (no mihomo required)
+        run: npm test
+
+      - name: YAML validation bridge works (Python + PyYAML)
+        run: |
+          python3 -m pip install --quiet pyyaml
+          node -e "const {yamlValidate}=require('./lib/yamlutil');const ok=yamlValidate('a: 1\\nb: [2,3]\\n');const bad=yamlValidate('a: [1\\n');console.log(JSON.stringify({ok,bad}));if(!ok.ok||bad.ok)process.exit(1)"

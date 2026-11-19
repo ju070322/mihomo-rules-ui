@@ -1,0 +1,19 @@
+# 运行期数据（含完整配置备份，其中可能有节点凭证，绝不能入库）
+data/
+logs/
+
+# 本机环境配置与私有运维备注（含绝对路径/端口等）
+rules-ui.env
+*.local.md
+
+# 依赖与系统文件
+node_modules/
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
