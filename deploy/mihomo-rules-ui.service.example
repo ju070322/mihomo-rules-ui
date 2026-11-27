@@ -1,0 +1,41 @@
+# mihomo-rules-ui systemd unit（模板）
+#
+# 安装步骤：
+#   1. 复制到 /etc/systemd/system/ 并按实际情况改下面三处路径：
+#        WorkingDirectory / EnvironmentFile / ExecStart
+#   2. sudo systemctl daemon-reload
+#   3. sudo systemctl enable --now mihomo-rules-ui
+#
+# 说明：
+#   - User 必须是"拥有 mihomo 主配置与 rules 目录写权限"的那个用户，
+#     否则网页能打开但保存规则会报 EACCES。
+#   - node 的路径用 `command -v node` 查，写绝对路径（systemd 不走你的 PATH；
+#     若用 nvm/fnm/fnOS 应用商店的 node，路径通常比较特殊）。
+#   - StandardOutput/Error=append: 需要 systemd >= 240；它让日志继续写进
+#     项目自带的 logs/rules-ui.log，方便和手动 ./start.sh 共用一套日志。
+#     不想要的话删掉这两行，改用 journalctl -u mihomo-rules-ui -f。
+
+[Unit]
+Description=mihomo Rules UI
+Documentation=https://github.com/ju070322/mihomo-rules-ui
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# ↓ 改成拥有主配置写权限的用户
+User=nobody
+Group=nogroup
+# ↓ 改成项目实际目录
+WorkingDirectory=/opt/mihomo-rules-ui
+EnvironmentFile=-/opt/mihomo-rules-ui/rules-ui.env
+# ↓ 改成 `command -v node` 的结果
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+StandardOutput=append:/opt/mihomo-rules-ui/logs/rules-ui.log
+StandardError=append:/opt/mihomo-rules-ui/logs/rules-ui.log
+
+[Install]
+WantedBy=multi-user.target

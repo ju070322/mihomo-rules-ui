@@ -120,6 +120,25 @@ rule-providers:
 
 ---
 
+## 开机自启（systemd）
+
+`start.sh` 只负责把进程拉起，**机器重启后不会自动运行**。仓库提供了模板 [deploy/mihomo-rules-ui.service.example](deploy/mihomo-rules-ui.service.example)：
+
+```bash
+sudo cp deploy/mihomo-rules-ui.service.example /etc/systemd/system/mihomo-rules-ui.service
+sudo vi /etc/systemd/system/mihomo-rules-ui.service   # 改 User / WorkingDirectory / ExecStart 三处
+sudo systemctl daemon-reload
+sudo systemctl enable --now mihomo-rules-ui
+systemctl status mihomo-rules-ui
+```
+
+几个容易踩的点：
+
+- `User` 必须是**拥有主配置写权限**的那个用户，否则网页能打开、但保存规则会报 EACCES
+- `ExecStart` 要写 node 的**绝对路径**（`command -v node`）；systemd 不继承你的 PATH，用 nvm / 应用商店装的 node 路径通常很特殊
+- 启用 systemd 服务后就**不要再手动 `./start.sh`**，两者会抢同一个端口；临时重启用 `sudo systemctl restart mihomo-rules-ui`
+- 日志默认继续写进 `logs/rules-ui.log`（`StandardOutput=append:`）；删掉那两行则改用 `journalctl -u mihomo-rules-ui -f`
+
 ## 配置
 
 全部通过环境变量（`start.sh` 会自动读取同目录的 `rules-ui.env`）：
